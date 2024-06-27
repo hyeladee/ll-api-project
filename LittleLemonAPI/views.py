@@ -50,15 +50,18 @@ class MenuItemView(viewsets.ModelViewSet):
             menu_item.delete()
             return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
-        
-    
+
+ 
 class CartView(viewsets.ModelViewSet):
     pass
+
 
 class OrdersView(viewsets.ModelViewSet):
     pass
 
+
 class ManagersView(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
@@ -78,7 +81,7 @@ class ManagersView(viewsets.ModelViewSet):
                 return Response(status=status.HTTP_201_CREATED)
             return Response(status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_403_FORBIDDEN)
-    
+
     def destroy(self, request, pk):
         if request.user.groups.filter(name='Manager').exists():
             user = get_object_or_404(User, pk=pk)
@@ -89,4 +92,31 @@ class ManagersView(viewsets.ModelViewSet):
 
 
 class DeliveryCrewsView(viewsets.ModelViewSet):
-    pass
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        if request.user.groups.filter(name='Manager').exists():
+            delivery_crew = Group.objects.get(name='Delivery_Crew').user_set.all()
+            serializer = UserSerializer(delivery_crew, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def create(self, request):
+        if request.user.groups.filter(name='Manager').exists():
+            username = request.data['username']
+            if username:
+                user = get_object_or_404(User, username=username)
+                delivery_crew = Group.objects.get(name='Delivery_Crew')
+                delivery_crew.user_set.add(user)
+                return Response(status=status.HTTP_201_CREATED)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def destroy(self, request, pk):
+        if request.user.groups.filter(name='Manager').exists():
+            user = get_object_or_404(User, pk=pk)
+            delivery_crew = Group.objects.get(name='Delivery_Crew')
+            delivery_crew.user_set.remove(user)
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_403_FORBIDDEN)
