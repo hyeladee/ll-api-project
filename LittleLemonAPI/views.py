@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Group
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets
 from .models import Category, MenuItem, Cart, OrderItem, Order, User
 from .serializers import CategorySerializer, MenuItemSerializer, CartSerializer, OrderItemSerializer, OrderSerializer, UserSerializer
@@ -53,7 +53,50 @@ class MenuItemView(viewsets.ModelViewSet):
 
  
 class CartView(viewsets.ModelViewSet):
-    pass
+    queryset = Cart.objects.all()
+    serializer_class = CartSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request):
+        cart_items = Cart.objects.filter(user=request.user)
+        serializer = CartSerializer(cart_items, many=True)
+        return Response(serializer.data)
+
+    def create(self, request):
+        cart_serializer = CartSerializer(data=request.data)
+        
+        if cart_serializer.is_valid():
+            menuitem_id = cart_serializer.validated_data['menuitem'].id
+            quantity = cart_serializer.validated_data['quantity']
+            
+            menu_item = get_object_or_404(MenuItem, id=menuitem_id)
+            existing_cart_item = Cart.objects.filter(user=request.user, menuitem=menu_item).first()
+            
+            if existing_cart_item:
+                existing_cart_item.quantity += quantity
+                existing_cart_item.price = existing_cart_item.unit_price * existing_cart_item.quantity
+                existing_cart_item.save()
+                cart_item = existing_cart_item
+            else:
+                cart_item = cart_serializer.save(
+                    user=request.user,
+                    unit_price=menu_item.price,
+                    price=menu_item.price * quantity
+                )
+
+            response_serializer = CartSerializer(cart_item)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(cart_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        if pk is not None:
+            cart_item = get_object_or_404(Cart, pk=pk, user=request.user)
+            cart_item.delete()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            cart_items = Cart.objects.filter(user=request.user)
+            cart_items.delete()
+            return Response(status=status.HTTP_200_OK)
 
 
 class OrdersView(viewsets.ModelViewSet):
@@ -61,6 +104,7 @@ class OrdersView(viewsets.ModelViewSet):
 
 
 class ManagersView(viewsets.ModelViewSet):
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
@@ -92,6 +136,7 @@ class ManagersView(viewsets.ModelViewSet):
 
 
 class DeliveryCrewsView(viewsets.ModelViewSet):
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
@@ -120,3 +165,4 @@ class DeliveryCrewsView(viewsets.ModelViewSet):
             delivery_crew.user_set.remove(user)
             return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
+
