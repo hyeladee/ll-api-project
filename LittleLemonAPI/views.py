@@ -88,8 +88,8 @@ class CartView(viewsets.ModelViewSet):
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         return Response(cart_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def destroy(self, request, pk=None):
-        if pk is not None:
+    def delete(self, request, pk=None):
+        if pk:
             cart_item = get_object_or_404(Cart, pk=pk, user=request.user)
             cart_item.delete()
             return Response(status=status.HTTP_200_OK)
