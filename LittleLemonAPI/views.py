@@ -1,4 +1,4 @@
-#from datetime import date
+from datetime import date
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Group
 from rest_framework import status
@@ -100,7 +100,31 @@ class CartView(viewsets.ModelViewSet):
 
 
 class OrdersView(viewsets.ModelViewSet):
-    pass
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request):
+        user = request.user
+        
+        if request.user.groups.filter(name='Manager').exists():
+            orders = Order.objects.prefetch_related('order_items').all()
+
+        elif request.user.groups.filter(name='Delivery_Crew').exists():
+            orders = Order.objects.prefetch_related('order_items').filter(delivery_crew=user)
+
+        else: # Customer endpoint
+            orders = Order.objects.prefetch_related('order_items').filter(user=user)
+
+        serialized_order = OrderSerializer(orders, many=True)
+        return Response(serialized_order.data, status=status.HTTP_200_OK)
+
+    def create(self, request):
+        order_serializer = 
+        
+        cart_items = Cart.objects.filter(user=request.user)
+        
+        date = today = date.today()
 
 
 class ManagersView(viewsets.ModelViewSet):
