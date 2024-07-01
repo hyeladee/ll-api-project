@@ -63,11 +63,11 @@ class CartView(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def create(self, request):
-        cart_serializer = CartSerializer(data=request.data)
+        serialized_cart = CartSerializer(data=request.data)
         
-        if cart_serializer.is_valid():
-            menuitem_id = cart_serializer.validated_data['menuitem'].id
-            quantity = cart_serializer.validated_data['quantity']
+        if serialized_cart.is_valid():
+            menuitem_id = serialized_cart.validated_data['menuitem'].id
+            quantity = serialized_cart.validated_data['quantity']
             
             menu_item = get_object_or_404(MenuItem, id=menuitem_id)
             existing_cart_item = Cart.objects.filter(user=request.user, menuitem=menu_item).first()
@@ -78,7 +78,7 @@ class CartView(viewsets.ModelViewSet):
                 existing_cart_item.save()
                 cart_item = existing_cart_item
             else:
-                cart_item = cart_serializer.save(
+                cart_item = serialized_cart.save(
                     user=request.user,
                     unit_price=menu_item.price,
                     price=menu_item.price * quantity
@@ -86,7 +86,7 @@ class CartView(viewsets.ModelViewSet):
 
             response_serializer = CartSerializer(cart_item)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(cart_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serialized_cart.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk=None):
         if pk:
@@ -99,35 +99,67 @@ class CartView(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
 
 
-class OrdersView(viewsets.ModelViewSet):
+class OrderView(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
     
-    def list(self, request):
-        user = request.user
+    def get_queryset(self):
+        user = self.request.user
         
-        if request.user.groups.filter(name='Manager').exists():
+        if user.groups.filter(name='Manager').exists():
             orders = Order.objects.prefetch_related('order_items').all()
 
-        elif request.user.groups.filter(name='Delivery_Crew').exists():
+        elif user.groups.filter(name='Delivery_Crew').exists():
             orders = Order.objects.prefetch_related('order_items').filter(delivery_crew=user)
 
-        else: # Customer endpoint
+        else:
             orders = Order.objects.prefetch_related('order_items').filter(user=user)
 
-        serialized_order = OrderSerializer(orders, many=True)
-        return Response(serialized_order.data, status=status.HTTP_200_OK)
+        return orders
+
+        # serialized_order = OrderSerializer(orders, many=True)
+        # return Response(serialized_order.data, status=status.HTTP_200_OK)
 
     def create(self, request):
-        order_serializer = 
+        user = request.user
+        cart_items = Cart.objects.filter(user=user)
+        total_price = sum(item.price for item in cart_items)
         
-        cart_items = Cart.objects.filter(user=request.user)
+        order_data = {
+        'user': user,
+        'status': False,
+        'total': total_price,
+        'date': date.today()
+        }
         
-        date = today = date.today()
+        serialized_order = OrderSerializer(data=order_data)
+        if serialized_order.is_valid():
+            order = serialized_order.save()
+
+            for item in cart_items:
+                order_item_data = {
+                    'order' : order.id,
+                    'menuitem': item.menuitem.id,
+                    'quantity': item.quantity,
+                    'unit_price': item.unit_price,
+                    'price': item.price
+                    }
+
+                serialized_order_item = OrderItemSerializer(data=order_item_data)
+                if serialized_order_item.is_valid:
+                    serialized_order_item.save()
+                else:
+                    return Response(serialized_order_item.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            cart_items.delete()
+
+            return Response(serialized_order.data, status=status.HTTP_201_CREATED)
+
+        return Response(serialized_order.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ManagersView(viewsets.ModelViewSet):
+class ManagerView(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -159,7 +191,7 @@ class ManagersView(viewsets.ModelViewSet):
         return Response(status=status.HTTP_403_FORBIDDEN)
 
 
-class DeliveryCrewsView(viewsets.ModelViewSet):
+class DeliveryCrewView(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -189,4 +221,5 @@ class DeliveryCrewsView(viewsets.ModelViewSet):
             delivery_crew.user_set.remove(user)
             return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
+
 
