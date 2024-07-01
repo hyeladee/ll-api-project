@@ -118,16 +118,13 @@ class OrderView(viewsets.ModelViewSet):
 
         return orders
 
-        # serialized_order = OrderSerializer(orders, many=True)
-        # return Response(serialized_order.data, status=status.HTTP_200_OK)
-
     def create(self, request):
         user = request.user
         cart_items = Cart.objects.filter(user=user)
         total_price = sum(item.price for item in cart_items)
         
         order_data = {
-        'user': user,
+        'user': user.id,
         'status': False,
         'total': total_price,
         'date': date.today()
@@ -147,7 +144,7 @@ class OrderView(viewsets.ModelViewSet):
                     }
 
                 serialized_order_item = OrderItemSerializer(data=order_item_data)
-                if serialized_order_item.is_valid:
+                if serialized_order_item.is_valid():
                     serialized_order_item.save()
                 else:
                     return Response(serialized_order_item.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -157,6 +154,50 @@ class OrderView(viewsets.ModelViewSet):
             return Response(serialized_order.data, status=status.HTTP_201_CREATED)
 
         return Response(serialized_order.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, pk):        
+        if request.user.groups.filter(name='Manager').exists():
+            order = get_object_or_404(Order, pk=pk)
+            order_update = OrderSerializer(order, data=request.data)
+            if order_update.is_valid():
+                order_update.save()
+                return Response(order_update.data, status=status.HTTP_200_OK)
+            return Response(order_update.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+    
+    def partial_update(self, request, pk=None):
+        order = get_object_or_404(Order, pk=pk)
+        user = request.user
+
+        if user.groups.filter(name='Manager').exists():
+            delivery_crew_id = request.data.get('delivery_crew')
+            status = request.data.get('status')
+
+            if delivery_crew_id is not None:
+                delivery_crew = get_object_or_404(User, pk=delivery_crew_id)
+                order.delivery_crew = delivery_crew
+            
+            if status in [0, 1]:
+                order.status = status
+
+            order.save()
+            serializer = self.get_serializer(order)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif user.groups.filter(name='Delivery_Crew').exists():
+            if 'status' in request.data and request.data['status'] in [0, 1]:
+                order.status = request.data['status']
+                order.save()
+                serializer = self.get_serializer(order)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Delivery crew can only update status to 0 or 1"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "You do not have permission to perform this action"}, status=status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, pk=None):
+        order = get_object_or_404(Order, pk=pk)
+        order.delete()
+        return Response(status=status.HTTP_200_OK)
 
 
 class ManagerView(viewsets.ModelViewSet):
