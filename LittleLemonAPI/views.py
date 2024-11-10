@@ -14,7 +14,7 @@ class MenuItemView(viewsets.ModelViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def create(self, request):
         if request.user.groups.filter(name='Manager').exists():
             new_menu = MenuItemSerializer(data=request.data)
