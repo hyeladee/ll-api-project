@@ -16,10 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from LittleLemonAPI.views import LoginView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls),
     path('api/', include('LittleLemonAPI.urls')),
+    path('api/alt-login', LoginView.as_view(), name='login'),
     
     path('api/', include('djoser.urls')),
     path('api/', include('djoser.urls.authtoken')),

@@ -264,3 +264,29 @@ class DeliveryCrewView(viewsets.ModelViewSet):
         return Response(status=status.HTTP_403_FORBIDDEN)
 
 
+
+# Browsable API Login
+
+from rest_framework.views import APIView
+from django.contrib.auth import authenticate, login
+from rest_framework.permissions import AllowAny
+from .serializers import LoginSerializer
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return Response({"detail": "Successfully logged in."})
+            else:
+                return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
