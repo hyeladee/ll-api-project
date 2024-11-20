@@ -268,7 +268,7 @@ class DeliveryCrewView(viewsets.ModelViewSet):
 # Browsable API Login
 
 from rest_framework.views import APIView
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny
 from .serializers import LoginSerializer
 
@@ -290,3 +290,10 @@ class LoginView(APIView):
                 return Response({"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        logout(request)  # Logs out the user
+        return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)

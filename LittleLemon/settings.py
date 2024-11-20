@@ -162,7 +162,9 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
-    ]
+    ],
+
+    'EXCEPTION_HANDLER': 'LittleLemonAPI.exceptions.custom_exception_handler',
 }
 
 # CORS_ALLOWED_ORIGINS = [
