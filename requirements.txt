@@ -1,0 +1,10 @@
+django
+djangorestframework
+djoser
+django-filter
+django-cors-headers
+uvicorn
+dj-database-url
+whitenoise[brotli]
+python-dotenv
+tzdata

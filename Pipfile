@@ -9,6 +9,11 @@ djangorestframework = "*"
 djoser = "*"
 django-filter = "*"
 django-cors-headers = "*"
+uvicorn = "*"
+dj-database-url = "*"
+whitenoise = {extras = ["brotli"], version = "*"}
+python-dotenv = "*"
+tzdata = "*"
 
 [dev-packages]
 
