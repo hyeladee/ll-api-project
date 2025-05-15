@@ -2,6 +2,8 @@
 
 An online food ordering API built with Python and Django. This project implements a robust backend for menu management, cart operations, and role-based order management. Below is a guide for quick setup, feature highlights, and endpoint documentation.
 
+Checkout live project here: [LL API Project](https://ll-backend-i854.onrender.com/api/)
+
 ---
 
 ## Quick Setup
